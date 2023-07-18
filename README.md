@@ -30,7 +30,7 @@ http {
     server {
         listen 80;
 
-        server_name ccme.com;
+        server_name acme.com;
 
         location /rdp {
             proxy_pass http://10.0.0.1:8080/guacamole/; # Partindo da premissa que o guacamole está na porta 8080
@@ -51,7 +51,7 @@ Outro ponto, é que esta configuração não inclui nenhuma configuração HTTPS
 
 **Lembrando que**: O NGINX não oferece suporte nativo ao RDP porque são diferentes tipos de protocolos (o RDP usa TCP e UDP enquanto o NGINX usa HTTP/HTTPS). A configuração acima destina-se a ilustrar como você pode configurar o NGINX para reverter o proxy para um servidor Guacamole, que pode lidar com conexões RDP.
 
-###
+### NGINX com autenticação básica
 O NGINX oferece suporte à autenticação HTTP básica, na qual os usuários podem ser autenticados usando um arquivo de senha local.
 
 Veja como você pode configurar isso:
