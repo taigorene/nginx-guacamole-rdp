@@ -1,8 +1,10 @@
 # Cenário de acesso RDP Acme
 
+Na era do trabalho remoto generalizado e dos serviços baseados em nuvem, é vital ter acesso remoto seguro e eficiente aos recursos. Este artigo explora uma solução que combina NGINX, um servidor HTTP de alto desempenho e proxy reverso, Apache Guacamole, um gateway de área de trabalho remota sem cliente e um servidor RDP para criar uma solução de acesso remoto segura, robusta e fácil de usar. Orientaremos você na configuração dessa arquitetura, com informações detalhadas sobre encaminhamento de porta, opções de autenticação e implantação do Guacamole usando o Docker.
+
 Para exemplo coloco um modelo para como podemos implementar uma solução para acesso RDP como sugestão e um primeiro guideline.
 
-> **Importante**: Não é uma proposta técnica e nem comercial e a ideia aqui é contribuir como um apoio técnico para o cliente.
+> **Importante**: Não é uma proposta técnica e nem comercial e a ideia aqui é contribuir como um apoio técnico para quem interessar.
 
 
 ## **NGINX**
@@ -49,6 +51,70 @@ Outro ponto, é que esta configuração não inclui nenhuma configuração HTTPS
 
 **Lembrando que**: O NGINX não oferece suporte nativo ao RDP porque são diferentes tipos de protocolos (o RDP usa TCP e UDP enquanto o NGINX usa HTTP/HTTPS). A configuração acima destina-se a ilustrar como você pode configurar o NGINX para reverter o proxy para um servidor Guacamole, que pode lidar com conexões RDP.
 
+###
+O NGINX oferece suporte à autenticação HTTP básica, na qual os usuários podem ser autenticados usando um arquivo de senha local.
+
+Veja como você pode configurar isso:
+
+1. **Instale o pacote `httpd-tools`**. Este pacote contém o utilitário `htpasswd`, que você usará para criar o arquivo de senha. Dependendo do seu sistema, o comando de instalação pode ser `sudo apt-get install apache2-utils` (Ubuntu) ou `sudo yum install httpd-tools` (CentOS).
+
+2. **Crie um arquivo de senha**. Use o utilitário `htpasswd` para criar um arquivo de senha. Aqui está um exemplo de comando:
+
+    ```
+    sudo htpasswd -c /etc/nginx/.htpasswd user1
+    ```
+
+    A opção `-c` cria um novo arquivo. `user1` é o nome de usuário. Você será solicitado a inserir e confirmar uma senha para o usuário. Se você deseja adicionar usuários adicionais, omita a opção `-c`:
+
+    ```
+    sudo htpasswd /etc/nginx/.htpasswd user2
+    ```
+
+3. **Atualize a configuração do NGINX**. Em seu arquivo `nginx.conf`, você precisará especificar o caminho para o arquivo de senha que acabou de criar usando as diretivas `auth_basic` e `auth_basic_user_file`. Aqui está um exemplo de configuração:
+
+```nginx
+    worker_processes 1;
+
+events {
+    worker_connections 1024;
+}
+
+http {
+    include       mime.types;
+    default_type  application/octet-stream;
+    sendfile        on;
+
+    server {
+        listen 80;
+
+        server_name acme.com;
+
+        location /rdp {
+            auth_basic "Restricted Content";    # Enable Basic Auth
+            auth_basic_user_file /etc/nginx/.htpasswd;  # Path to the password file
+
+            proxy_pass http://10.0.0.1:8080/guacamole/;
+            proxy_buffering off;
+            proxy_http_version 1.1;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header Host $host;
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection "upgrade";
+        }
+    }
+}
+
+```
+
+Isso solicitará que os usuários insiram um nome de usuário e senha quando navegarem para "acme.com/rdp". O nome de usuário e a senha devem corresponder a uma das entradas no arquivo de senha.
+
+4. **Recarregue o NGINX**. Depois de salvar suas alterações, você precisará recarregar a configuração do NGINX:
+
+    ```
+    sudo systemctl reload nginx
+    ```
+
+Lembre-se de que a Autenticação básica HTTP transmite credenciais em texto simples (codificado em base64), portanto, ela sempre deve ser usada em conjunto com HTTPS para proteger as credenciais.
 ### NGINX com autenticação do office 365
 
 É possível usar o Microsoft Office 365 (especificamente o Azure AD) para autenticar o acesso aos seus aplicativos com proxy por meio do NGINX. Esse processo envolve a configuração de um cliente OAuth 2.0 no Azure AD, o que permitirá que o NGINX delegue a autenticação ao Azure AD. Dessa forma, os usuários devem primeiro fazer login com suas credenciais do Office 365 antes de poderem acessar o aplicativo.
@@ -205,7 +271,7 @@ O diagrama de arquitetura de alto nível para a solução que integra NGINX, Gua
 ```text
 +------------------+      +--------------+     +----------------+     +---------------+
 |                  |      |              |     |                |     |               |
-|  User's Browser  <----->  NGINX Server <---->  Guacamole     <----> | RDP Server    |
+|  User's Browser  <----->  NGINX Server |<--->|   Guacamole    |<--->| RDP Server    |
 |                  |      |              |     |  Docker Image  |     |               |
 +------------------+      +--------------+     +----------------+     +---------------+
     (Internet)            (DMZ Zone)              (DMZ Zone)         (Internal Network)
@@ -220,5 +286,8 @@ O diagrama de arquitetura de alto nível para a solução que integra NGINX, Gua
 4. **Servidor RDP**: Este é o Windows Server ao qual os usuários desejam se conectar. O servidor RDP executa os comandos que recebe do Guacamole e retorna o resultado, que o Guacamole envia de volta ao cliente via NGINX.
 
 >*Nota*: Esta é uma versão simplificada de uma arquitetura potencial. Em um cenário do mundo real, haveria mais considerações sobre segurança, alta disponibilidade, desempenho, monitoramento e assim por diante. Por exemplo, você pode querer adicionar um firewall ou usar um Sistema de Prevenção de Intrusão (IPS). Você também pode querer considerar o balanceamento de carga se espera lidar com muitas conexões simultâneas. A criptografia (HTTPS/TLS) também deve ser implementada para todo o tráfego baseado na web.
+
+# Conclusão
+Em resumo, integrando os recursos do NGINX, Apache Guacamole e um servidor RDP, podemos implementar um serviço de desktop remoto seguro e eficiente. Examinamos como essas tecnologias interagem para formar uma solução segura e fácil de usar, com estratégias de autenticação aprimorando ainda mais a segurança. No entanto, lembre-se de que necessidades e requisitos individuais podem afetar sua arquitetura e configurações e devem sempre ser levados em consideração no projeto e na implementação de sua solução de acesso remoto. Compreender e alavancar essas tecnologias é fundamental para estabelecer uma solução de acesso remoto seguro e eficaz.
 
 ##### Criado por Taígo Soares
