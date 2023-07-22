@@ -1,3 +1,15 @@
+# Índice
+
+- [Índice](#índice)
+- [Cenário de acesso RDP Acme](#cenário-de-acesso-rdp-acme)
+  - [**NGINX**](#nginx)
+    - [NGINX com autenticação básica](#nginx-com-autenticação-básica)
+    - [NGINX com autenticação do office 365](#nginx-com-autenticação-do-office-365)
+  - [**GUACAMOLE**](#guacamole)
+  - [Arquitetura Final](#arquitetura-final)
+- [Conclusão](#conclusão)
+        - [Criado por Taígo Soares](#criado-por-taígo-soares)
+
 # Cenário de acesso RDP Acme
 
 Na era do trabalho remoto generalizado e dos serviços baseados em nuvem, é vital ter acesso remoto seguro e eficiente aos recursos. Este artigo explora uma solução que combina NGINX, um servidor HTTP de alto desempenho e proxy reverso, Apache Guacamole, um gateway de área de trabalho remota sem cliente e um servidor RDP para criar uma solução de acesso remoto segura, robusta e fácil de usar. Orientaremos você na configuração dessa arquitetura, com informações detalhadas sobre encaminhamento de porta, opções de autenticação e implantação do Guacamole usando o Docker.
